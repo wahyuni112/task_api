@@ -1,25 +1,24 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, g
 import psycopg2.extras
 import psycopg2
 
 app = Flask(__name__)
 
-# conn = psycopg2.connect(database="food_menu",
-#                         user="postgres",
-#                         password="1234",
-#                         host="localhost", port="5432")
+conn = psycopg2.connect(database="menu_food",
+                        user="postgres",
+                        password="1234",
+                        host="localhost", port="5432")
+
+
+@app.teardown_appcontext
+def close_db_connection(exception):
+    conn.close()
 
 # cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
 
 @app.route('/menu')
 def menu():
-    conn = psycopg2.connect(database="menu_food",
-                            user="postgres",
-                            password="1234",
-                            host="localhost", port="5432")
-
-
     # create a cursor
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -40,18 +39,12 @@ def menu():
         data[index]["filling"] = data_fillings
     # Close the cursor and connection
     cur.close()
-    conn.close()
     return (data)
 
-    
 
 @app.route('/order', methods=['POST'])
 def order():
-    #Connect to the database
-    conn = psycopg2.connect(database="menu_food",
-                            user="postgres",
-                            password="1234",
-                            host="localhost", port="5432")
+    # Connect to the database
     cur = conn.cursor()
 
     # Get the order data from the request
@@ -85,9 +78,36 @@ def order():
         item_price = base_price + filling_price + topping_price
         total_price += item_price
 
+        # Get the customer_name
+        # customer_name = order_data[customer_name]
+        # order_date = order_data['order_date']
+
+    # Insert the order data
+    # cur.execute('INSERT INTO customer_order (customer_name, order_date, total_price) VALUES (%s, %s, %s)',
+     #           (order_data['customer_name'], order_data['order_date'], total_price))
+    cur.execute('INSERT INTO customer_order (customer_name, order_date, total_price) VALUES (%s, %s, %s)',
+                (order_data(item['food_id']), total_price))
+    conn.commit()
+
     # Close the cursor and connection
     cur.close()
     conn.close()
+
+# @app.route('/customer_order', methods=['POST'])
+# def customer_order():
+#     # customer_name = order_data['customer_name']
+#     if request.method == 'POST':
+#         customer_name = request.form['customer_name']
+#         order_date = request.form['order_date']
+
+#         conn = get_db_connection()
+#         cur = conn.cursor()
+#         cur.execute('INSERT INTO customer_order (customer_name, order_date, order_name, total_price)''VALUES (%s, %s, %s, %s)',
+#                     (customer_name, order_date, order_name, total_price))
+#         conn.commit()
+
+    # Close the cursor and connection
+    cur.close()
 
     # Return the total price as a JSON response
     return jsonify({'total_price': total_price})
